@@ -7,23 +7,27 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using Chaos.NaCl;
+using NBitcoin;
+
 
 namespace dotnetstandard_bip32
 {
     public class BIP32
     {
-        readonly string curve = "ed25519 seed";
+        readonly string curve = "Bitcoin seed";
         readonly uint hardenedOffset = 0x80000000;
 
         public (byte[] Key, byte[] ChainCode) GetMasterKeyFromSeed(string seed)
         {
+            //Console.WriteLine($"C# Seed: {seed}");  // Print the seed
             using (HMACSHA512 hmacSha512 = new HMACSHA512(Encoding.UTF8.GetBytes(curve)))
             {
                 var i = hmacSha512.ComputeHash(seed.HexToByteArray());
-
+                //Console.WriteLine($"C# HMAC-SHA512 Hash: {BitConverter.ToString(i).Replace("-", "")}");  // Print the hash in hex
                 var il = i.Slice(0, 32);
                 var ir = i.Slice(32);
-
+                //Console.WriteLine($"C# Master Key: {BitConverter.ToString(il).Replace("-", "")}");  // Print the master key in hex
+                //Console.WriteLine($"C# Chain Code: {BitConverter.ToString(ir).Replace("-", "")}");  // Print the chain code in hex
                 return (Key: il, ChainCode: ir);
             }
         }
@@ -47,7 +51,21 @@ namespace dotnetstandard_bip32
             }
         }
 
-        public byte[] GetPublicKey(byte[] privateKey, bool withZeroByte = true)
+        public byte[] GetPublicKey(byte[] privateKeyBytes, bool withZeroByte = true)
+        {
+            // Create a new Key object from the private key bytes
+            Key privateKey = new Key(privateKeyBytes);
+
+            // Get the public key
+            PubKey publicKey = privateKey.PubKey;
+
+            // Serialize to a byte array, in compressed or uncompressed format
+            byte[] publicKeyBytes = publicKey.ToBytes();
+
+            return publicKeyBytes;
+        }
+
+        public byte[] GetPublicKey_v0(byte[] privateKey, bool withZeroByte = true)
         {
             Ed25519.KeyPairFromSeed(out var publicKey, out _, privateKey);
 

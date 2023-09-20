@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
     <RootNamespace>dotnetstandard_bip32_unittest</RootNamespace>
     <IsPackable>false</IsPackable>
     <LangVersion>7.2</LangVersion>
@@ -12,5 +12,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\dotnetstandard-bip32\dotnetstandard-bip32.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ManualTestRunner.cs" />
   </ItemGroup>
 </Project>
