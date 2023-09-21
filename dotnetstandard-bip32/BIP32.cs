@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Chaos.NaCl;
 using NBitcoin;
+using System.Numerics;
 
 
 namespace dotnetstandard_bip32
@@ -34,6 +35,13 @@ namespace dotnetstandard_bip32
 
         private (byte[] Key, byte[] ChainCode) GetChildKeyDerivation(byte[] key, byte[] chainCode, uint index)
         {
+            // print chain code
+            Console.WriteLine($"C# GetChildKeyDerivation Chain Code: {BitConverter.ToString(chainCode).Replace("-", "")}");
+            // print key
+            Console.WriteLine($"C# GetChildKeyDerivation Key: {BitConverter.ToString(key).Replace("-", "")}");
+            // print index
+            Console.WriteLine($"C# GetChildKeyDerivation Index: {index}");            
+
             BigEndianBuffer buffer = new BigEndianBuffer();
 
             buffer.Write(new byte[] { 0 });
@@ -47,7 +55,56 @@ namespace dotnetstandard_bip32
                 var il = i.Slice(0, 32);
                 var ir = i.Slice(32);
 
-                return (Key: il, ChainCode: ir);
+                // print il, ir
+                Console.WriteLine($"C# GetChildKeyDerivation il: {BitConverter.ToString(il).Replace("-", "")}");
+                Console.WriteLine($"C# GetChildKeyDerivation ir: {BitConverter.ToString(ir).Replace("-", "")}");
+
+                // return (Key: il, ChainCode: ir);
+                
+                // Assuming BigInteger is used for the modular arithmetic
+                //BigInteger a = new BigInteger(il);  // Convert byte array il to BigInteger
+
+                // Reverse the byte array for big-endian interpretation
+                //BigInteger a = new BigInteger(il.Reverse().ToArray());  
+                // Reverse the byte array for big-endian interpretation and append a zero byte for positive sign
+                BigInteger a = new BigInteger(il.Reverse().Append((byte)0).ToArray());  
+                BigInteger parentKeyInt = new BigInteger(key.Reverse().Append((byte)0).ToArray());
+                //BigInteger parentKeyInt = new BigInteger(key.Reverse().ToArray()); 
+
+                Console.WriteLine($"C# GetChildKeyDerivation a: {a}");
+                //BigInteger parentKeyInt = new BigInteger(key);  // Convert parent key to BigInteger
+                Console.WriteLine($"C# GetChildKeyDerivation parentKeyInt: {parentKeyInt}");
+                //BigInteger curveOrder = ...  // The order of the secp256k1 curve
+                BigInteger curveOrder = BigInteger.Parse("115792089237316195423570985008687907852837564279074904382605163141518161494337");
+
+                BigInteger newKey = (a + parentKeyInt) % curveOrder;
+
+                if (a < curveOrder && newKey != 0)
+                {
+                    Console.WriteLine("C# GetChildKeyDerivation: The key at this index is valid");
+                    //byte[] newKeyBytes = newKey.ToByteArray();  // Convert BigInteger back to byte array
+                    byte[] newKeyBytes = newKey.ToByteArray().Reverse().ToArray(); // Convert to big-endian
+                    // Make sure newKeyBytes is 32 bytes long
+                    if (newKeyBytes.Length < 32)
+                    {
+                        // Pad with zeros at the beginning (most significant bytes) if less than 32 bytes
+                        newKeyBytes = new byte[32 - newKeyBytes.Length].Concat(newKeyBytes).ToArray();
+                    }
+                    else if (newKeyBytes.Length > 32)
+                    {
+                        // Truncate most significant bytes if more than 32 bytes
+                        newKeyBytes = newKeyBytes.Skip(newKeyBytes.Length - 32).ToArray();
+                    }
+                    
+                    return (Key: newKeyBytes, ChainCode: ir);
+                }
+                else
+                {
+                    // The key at this index is invalid, so we increment the index and try again
+                    Console.WriteLine("C# GetChildKeyDerivation: The key at this index is invalid, so we increment the index and try again");
+                    return GetChildKeyDerivation(key, chainCode, index + 1);
+                }
+
             }
         }
 
