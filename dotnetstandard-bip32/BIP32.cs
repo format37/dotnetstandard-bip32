@@ -33,8 +33,25 @@ namespace dotnetstandard_bip32
             }
         }
 
+        private string path = "m"; // Add this line to store the full derivation path
+        private int counter = 1; // Add this line to keep track of the steps
+
         private (byte[] Key, byte[] ChainCode) GetChildKeyDerivation(byte[] key, byte[] chainCode, uint index)
         {
+
+            // Update the path variable
+            path += "/" + index.ToString();
+            if ((index & 0x80000000) != 0)
+            {
+                path += "<sub>H</sub>";
+            }
+            // Print the full derivation path
+            Console.WriteLine($">>>C# GetChildKeyDerivation Path: {path} step: {counter}");
+            // ... existing code ...
+            counter += 1; // Increment the counter for the next step
+
+
+            //index = 2147483692; // hardcoded "m/44'/9000'/0'/0/0"
             // print chain code
             Console.WriteLine($"C# GetChildKeyDerivation Chain Code: {BitConverter.ToString(chainCode).Replace("-", "")}");
             // print key
@@ -137,7 +154,7 @@ namespace dotnetstandard_bip32
             return buffer.ToArray();
         }
 
-        private bool IsValidPath(string path)
+        private bool IsValidPath_v0(string path)
         {
             var regex = new Regex("^m(\\/[0-9]+')+$");
 
@@ -152,8 +169,83 @@ namespace dotnetstandard_bip32
             return valid;
         }
 
+        private bool IsValidPath(string path)
+        {
+            // Modified regex to allow for optional hardening symbol (')
+            var regex = new Regex("^m(\\/[0-9]+')*(\\/[0-9]+)*$");
+
+            if (!regex.IsMatch(path))
+                return false;
+
+            var valid = !(path.Split('/')
+                .Skip(1) // Skip the "m" part
+                .Select(a => a.Replace("'", ""))
+                .Any(a => !UInt32.TryParse(a, out _)));
+
+            return valid;
+        }
 
         public (byte[] Key, byte[] ChainCode) DerivePath(string path, string seed)
+        {
+            var masterKeyFromSeed = GetMasterKeyFromSeed(seed);
+
+            Console.WriteLine($"Master Key: {BitConverter.ToString(masterKeyFromSeed.Key).Replace("-", "")}");
+            Console.WriteLine($"Master Chain Code: {BitConverter.ToString(masterKeyFromSeed.ChainCode).Replace("-", "")}");
+
+            uint index44 = 0x8000002c;
+            uint index9000 = 0x80002328;
+            uint index0Hardened = 0x80000000;
+            uint index0 = 0x00000000;
+
+            Console.WriteLine($"C# DerivePath index44: {index44}");
+            var result1 = GetChildKeyDerivation(masterKeyFromSeed.Key, masterKeyFromSeed.ChainCode, index44);            
+            Console.WriteLine($"\nResult1 Key: {BitConverter.ToString(result1.Key).Replace("-", "")}");
+            Console.WriteLine($"Result1 Chain Code: {BitConverter.ToString(result1.ChainCode).Replace("-", "")}");
+
+            Console.WriteLine($"C# DerivePath index9000: {index9000}");
+            var result2 = GetChildKeyDerivation(result1.Key, result1.ChainCode, index9000);
+            Console.WriteLine($"\nResult2 Key: {BitConverter.ToString(result2.Key).Replace("-", "")}");
+            Console.WriteLine($"Result2 Chain Code: {BitConverter.ToString(result2.ChainCode).Replace("-", "")}");
+
+            Console.WriteLine($"C# DerivePath index0Hardened: {index0Hardened}");
+            var result3 = GetChildKeyDerivation(result2.Key, result2.ChainCode, index0Hardened);
+            Console.WriteLine($"\nResult3 Key: {BitConverter.ToString(result3.Key).Replace("-", "")}");
+            Console.WriteLine($"Result3 Chain Code: {BitConverter.ToString(result3.ChainCode).Replace("-", "")}");
+
+            Console.WriteLine($"C# DerivePath index0: {index0}");
+            var result4 = GetChildKeyDerivation(result3.Key, result3.ChainCode, index0);
+            Console.WriteLine($"\nResult4 Key: {BitConverter.ToString(result4.Key).Replace("-", "")}");
+            Console.WriteLine($"Result4 Chain Code: {BitConverter.ToString(result4.ChainCode).Replace("-", "")}");
+
+            Console.WriteLine($"C# DerivePath index0: {index0}");
+            var result5 = GetChildKeyDerivation(result4.Key, result4.ChainCode, index0);
+            Console.WriteLine($"\nResult5 Key: {BitConverter.ToString(result5.Key).Replace("-", "")}");
+            Console.WriteLine($"Result5 Chain Code: {BitConverter.ToString(result5.ChainCode).Replace("-", "")}");
+
+            return result5;
+        }
+
+        public (byte[] Key, byte[] ChainCode) DerivePath_v1(string path, string seed)
+        {
+
+            var masterKeyFromSeed = GetMasterKeyFromSeed(seed);
+
+            uint index44 = 0x8000002c; // Or 2147483692 in decimal
+            uint index9000 = 0x80002328; // Or 2147488816 in decimal
+            uint index0Hardened = 0x80000000; // Or 2147483648 in decimal
+            uint index0 = 0x00000000; // Or 0 in decimal
+
+            // Derive the keys
+            var result1 = GetChildKeyDerivation(masterKeyFromSeed.Key, masterKeyFromSeed.ChainCode, index44);
+            var result2 = GetChildKeyDerivation(result1.Key, result1.ChainCode, index9000);
+            var result3 = GetChildKeyDerivation(result2.Key, result2.ChainCode, index0Hardened);
+            var result4 = GetChildKeyDerivation(result3.Key, result3.ChainCode, index0);
+            var result5 = GetChildKeyDerivation(result4.Key, result4.ChainCode, index0);
+
+            return result5;
+        }
+
+        public (byte[] Key, byte[] ChainCode) DerivePath_v0(string path, string seed)
         {
             if (!IsValidPath(path))
                 throw new FormatException("Invalid derivation path");
@@ -168,6 +260,7 @@ namespace dotnetstandard_bip32
 
             var results = segments
                 .Aggregate(masterKeyFromSeed, (mks, next) => GetChildKeyDerivation(mks.Key, mks.ChainCode, next + hardenedOffset));
+
 
             return results;
         }
