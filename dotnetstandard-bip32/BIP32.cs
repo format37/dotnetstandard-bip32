@@ -49,8 +49,6 @@ namespace dotnetstandard_bip32
             
             // Print the full derivation path
             Console.WriteLine($"  * chain path: {path}");
-            // ... existing code ...
-            //counter += 1; // Increment the counter for the next step
 
             BigEndianBuffer buffer = new BigEndianBuffer();            
             if (index == 0) 
@@ -63,12 +61,6 @@ namespace dotnetstandard_bip32
                 buffer.Write(key);
             }
             buffer.WriteUInt(index);
-            /*if (index == 0) 
-            {
-                buffer.Write(new byte[] { 0, 0, 0, 0 });  // Manually write 4 bytes of zero for the index 0
-                Console.WriteLine("        > C# buffer zero");
-            }
-            else buffer.WriteUInt(index);*/
 
             using (HMACSHA512 hmacSha512 = new HMACSHA512(chainCode))
             {
@@ -87,11 +79,7 @@ namespace dotnetstandard_bip32
                 //Reverse the byte array for big-endian interpretation and append a zero byte for positive sign
                 BigInteger a = new BigInteger(il.Reverse().Append((byte)0).ToArray());  
                 BigInteger parentKeyInt = new BigInteger(key.Reverse().Append((byte)0).ToArray());
-                //BigInteger parentKeyInt = new BigInteger(key.Reverse().ToArray()); 
 
-                //Console.WriteLine($"C# GetChildKeyDerivation a: {a}");
-                //BigInteger parentKeyInt = new BigInteger(key);  // Convert parent key to BigInteger
-                //Console.WriteLine($"C# GetChildKeyDerivation parentKeyInt: {parentKeyInt}");
                 //BigInteger curveOrder = ...  // The order of the secp256k1 curve
                 BigInteger curveOrder = BigInteger.Parse("115792089237316195423570985008687907852837564279074904382605163141518161494337");
 
@@ -99,8 +87,6 @@ namespace dotnetstandard_bip32
 
                 if (a < curveOrder && newKey != 0)
                 {
-                    //Console.WriteLine("C# GetChildKeyDerivation: The key at this index is valid");
-                    //byte[] newKeyBytes = newKey.ToByteArray();  // Convert BigInteger back to byte array
                     byte[] newKeyBytes = newKey.ToByteArray().Reverse().ToArray(); // Convert to big-endian
                     // Make sure newKeyBytes is 32 bytes long
                     if (newKeyBytes.Length < 32)
